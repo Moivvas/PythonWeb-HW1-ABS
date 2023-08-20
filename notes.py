@@ -64,7 +64,6 @@ class Note:
 
 
 
-
 class Command(ABC):
     @abstractmethod
     def execute(self):
@@ -264,15 +263,20 @@ class SearchCommand(Command):
             print("\n***Ooops***\nWrong input")
             SearchCommand()
 
-        
+def show_help():
+    ...
+
+def exit_func():
+    ...
+
 note_commands = {
     "add": [AddNoteCommand, 'to add note'],
     "delete": [DeleteNoteCommand, 'to delete note'],
     "edit": [ChangeNoteCommand, 'to edit note'],
     "search": [SearchCommand, 'to search note'],
     "show all": [ShowNotesCommand, 'to output all notes'],
-    'help': [help, 'to see list of commands'],
-    "0 or exit": [exit, 'to exit']
+    'help': [show_help, 'to see list of commands'],
+    "0 or exit": [exit_func, 'to exit']
 }
 
 
@@ -327,6 +331,3 @@ def notes_main():
                 nb.execute_command(note_commands[command][0](nb))
             else:
                 print("Invalid command.")
-
-if __name__ == "__main__":
-    notes_main()
