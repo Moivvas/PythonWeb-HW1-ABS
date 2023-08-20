@@ -264,16 +264,36 @@ class SearchCommand(Command):
             print("\n***Ooops***\nWrong input")
             SearchCommand()
 
-        
+
+class HelpMenuCommand(Command):
+    def __init__(self, note_book, note_commands):  # Додайте note_commands як аргумент
+        self.note_book = note_book
+        self.note_commands = note_commands  # Збережіть словник команд
+
+    def execute(self):
+        console = Console()
+        table = Table(show_header=True, header_style="bold magenta", width=60, show_lines=False)
+        table.add_column("Command", max_width=None, no_wrap=False)
+        table.add_column("Description", width=20, no_wrap=False)
+
+        for func_name, func in self.note_commands.items():  # Використовуйте self.note_commands
+            table.add_row(str(func_name), str(func[1]))
+
+        console.print(table)
+
+def exit_notes():
+    pass
+
 note_commands = {
     "add": [AddNoteCommand, 'to add note'],
     "delete": [DeleteNoteCommand, 'to delete note'],
-    "edit": [ChangeNoteCommand, 'to edit note'],  # Припустимо, що ви також маєте клас ChangeNoteCommand
-    "search": [SearchCommand, 'to search note'],  # Припустимо, що ви також маєте клас SearchCommand
-    "show all": [ShowNotesCommand, 'to output all notes'],  # Припустимо, що ви також маєте клас ShowNotesCommand
-    # 'help': [HelpMenuCommand, 'to see list of commands'],  # Припустимо, що ви також маєте клас HelpMenuCommand
-    # "0 or exit": [ExitNotesCommand, 'to exit']  # Припустимо, що ви також маєте клас ExitNotesCommand
+    "edit": [ChangeNoteCommand, 'to edit note'],
+    "search": [SearchCommand, 'to search note'],
+    "show all": [ShowNotesCommand, 'to output all notes'],
+    'help': [HelpMenuCommand, 'to see list of commands'],
+    "0 or exit": [exit_notes, 'to exit']
 }
+
 
 
 def pars(txt_comm: str, command_dict):
@@ -308,22 +328,28 @@ def instruction(command_dict):
 
 def notes_main():
     print("\n\n***Hello I`m a notebook.***\n")
-    instruction(note_commands)
     nb = NoteBook()
+    nb.execute_command(note_commands["help"][0](nb, note_commands))
     nb.load()
+
+    for command_name, command_info in note_commands.items():
+        if command_name == 'help':
+            command_info[0].note_commands = note_commands  # Передайте словник команд у HelpMenuCommand
+        else:
+            command_info[0].note_book = nb
 
     while True:
         user_input_command = str(input("\nInput a command:\n>>>"))
         command = pars(user_input_command.lower(), note_commands)
         
-        if user_input_command == 'help':
-            instruction(note_commands)
-        elif user_input_command in ("exit", "0"):
+        if user_input_command in ("exit", "0"):
             nb.save()
             print('Notebook closed')
             break
+        elif user_input_command == 'help':
+            nb.execute_command(note_commands["help"][0](nb, note_commands))
         else:
-            if command in note_commands:
+            if command and command in note_commands:
                 nb.execute_command(note_commands[command][0](nb))
             else:
                 print("Invalid command.")
