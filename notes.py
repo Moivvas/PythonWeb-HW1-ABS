@@ -3,6 +3,7 @@ from collections import UserDict
 import pickle
 from rich.console import Console
 from rich.table import Table
+from abc import ABC, abstractmethod
 
 
 class Tag:
@@ -62,7 +63,22 @@ class Note:
         self.note_text = state
 
 
-class NoteBook(UserDict):
+
+
+class Command(ABC):
+    @abstractmethod
+    def execute(self):
+        pass
+
+class NoteBook:
+    def __init__(self):
+        self.data = {}
+        self.load() 
+
+    def execute_command(self, command):
+        result = command.execute()
+        if result:
+            print(result)
 
     def add_note(self, note, tags):
         self.data[note] = tags
@@ -118,14 +134,14 @@ class NoteBook(UserDict):
                 return 'Exit "Edit func" success'
             else:
                 print("\n***Ooops***\nInvalid input. Please choose a valid number.")
-                nb.edit_note()
+                self.edit_note()
         except ValueError:
             print("\n***Ooops***\nInvalid input. Please enter a number.")
-            nb.edit_note()
+            self.edit_note()
 
     def search_note(self, text):
         found_fields = []
-        for key, value in self.items():
+        for key, value in self.data.items():
             if str(key).find(text) != -1:
                 found_fields.append((key, value))
 
@@ -135,7 +151,7 @@ class NoteBook(UserDict):
         table.add_column("Tags")
 
         for obj in found_fields:
-            str_tags = ", ".join(obj[1])
+            str_tags = ", ".join(str(tag) for tag in obj[1])
             table.add_row(str(obj[0]), str_tags)
 
         if found_fields:
@@ -146,7 +162,7 @@ class NoteBook(UserDict):
     def search_tag(self, text):
         found_tags = []
 
-        for key, value in self.items():
+        for key, value in self.data.items():
             tag_lst = ', '.join(str(v) for v in value)
             if text in tag_lst:
                 found_tags.append((str(key), tag_lst))
@@ -165,90 +181,98 @@ class NoteBook(UserDict):
             return console.print("\n***Ooops***\nNo matching found.")
 
 
-nb = NoteBook()
+class AddNoteCommand(Command):
+    def __init__(self, note_book):
+        self.note_book = note_book
 
-
-def add_note():
-    user_input_note = input('\n***Add func***\nInput your note ("0" - to exit delete func):\n>>>')
-    if user_input_note == "0":
-        return 'Exit "Add func" success'
-    elif not user_input_note:
-        print("\nEmpty note not allowed")
-        add_note()
-    else:
-        user_input_tags = input('\nInput tags for a note (space-separated):\n>>>')
-        user_input_tags = user_input_tags.strip().split()
-        tags = Tags()
-        for user_tag in user_input_tags:
-            tag = Tag(user_tag)
-
-            tags.tags.append(tag)
-        note = Note(user_input_note)
-        nb.add_note(note, tags)
-        return "You are good!!!\nNote has been added"
-
-
-def delete_note():
-    nb.show_notes()
-
-    x = input("\n***Delete func***\nChoose the note you want to delete by number ('0' - to exit delete func):\n>>> ")
-
-    try:
-        x = int(x)
-        keys = list(nb.data.keys())
-        if 1 <= x <= len(keys):
-            note_to_delete = keys[x - 1]
-            del nb.data[note_to_delete]
-            print(f"\nNote '{note_to_delete}' has been deleted.")
-        elif x == 0:
-            return 'Exit "Delete func" success'
+    def execute(self):
+        user_input_note = input('\n***Add func***\nInput your note ("0" - to exit add func):\n>>>')
+        
+        if user_input_note == "0":
+            return 'Exit "Add func" success'
+        elif not user_input_note:
+            print("\nEmpty note not allowed")
+            return 'Add func failed'
         else:
-            print("\n***Ooops***\nInvalid input. Please enter a valid number.")
-            delete_note()
-    except ValueError:
-        print("\n***Ooops***\nInvalid input. Please enter a number.")
-        delete_note()
+            user_input_tags = input('\nInput tags for the note (comma-separated):\n>>>')
+            user_input_tags = user_input_tags.strip().split(',')
+            tags = Tags()
+            for user_tag in user_input_tags:
+                tag = Tag(user_tag.strip())
+                tags.tags.append(tag)
+            note = Note(user_input_note)
+            self.note_book.add_note(note, tags)
+            return "Note has been added"
 
 
-def change_note():
-    return nb.edit_note()
+class DeleteNoteCommand(Command):
+    def __init__(self, note_book):
+        self.note_book = note_book
+
+    def execute(self):
+        self.note_book.show_notes()
+        x = input("\n***Delete func***\nChoose the note you want to delete by number ('0' - to exit delete func):\n>>> ")
+
+        try:
+            x = int(x)
+            keys = list(self.note_book.data.keys())
+            if 1 <= x <= len(keys):
+                note_to_delete = keys[x - 1]
+                del self.note_book.data[note_to_delete]
+                print(f"\nNote '{note_to_delete}' has been deleted.")
+            elif x == 0:
+                return 'Exit "Delete func" success'
+            else:
+                print("\n***Ooops***\nInvalid input. Please enter a valid number.")
+                self.execute()
+        except ValueError:
+            print("\n***Ooops***\nInvalid input. Please enter a number.")
+            self.execute()
 
 
-def exit_notes():
-    pass
+class ShowNotesCommand(Command):
+    def __init__(self, note_book):
+        self.note_book = note_book
+    
+    def execute(self):
+        return self.note_book.show_notes()
+    
 
+class ChangeNoteCommand(Command):
+    def __init__(self, note_book):
+        self.note_book = note_book
+    
+    def execute(self):
+        return self.note_book.edit_note()
+    
 
-def show_notes():
-    return nb.show_notes()
-
-
-def search():
-    user_choice = input("\n***Search***\nEnter '1' to search in note\nEnter '2' to search in tags\n>>>")
-    if user_choice == "1" or user_choice == "2":
-        search_key = input("Enter a search keyword\n>>>")
-        if user_choice == '1':
-            return nb.search_note(search_key)
-        elif user_choice == '2':
-            return nb.search_tag(search_key)
+class SearchCommand(Command):
+    def __init__(self, note_book):
+        self.note_book = note_book
+    
+    def execute(self):
+        user_choice = input("\n***Search***\nEnter '1' to search in note\nEnter '2' to search in tags\n>>>")
+        if user_choice == "1" or user_choice == "2":
+            search_key = input("Enter a search keyword\n>>>")
+            if user_choice == '1':
+                return self.note_book.search_note(search_key)
+            elif user_choice == '2':
+                return self.note_book.search_tag(search_key)
+            else:
+                return "Wrong input"
         else:
-            return "Wrong input"
-    else:
-        print("\n***Ooops***\nWrong input")
-        search()
+            print("\n***Ooops***\nWrong input")
+            SearchCommand()
 
-
-def help_menu():
-    pass
-
-
+        
 note_commands = {
-    "add": [add_note, 'to add note'],
-    "delete": [delete_note, 'to delete note'],
-    "edit": [change_note, 'to edit note'],
-    "search": [search, 'to search note'],
-    "show all": [show_notes, 'to output all notes'],
-    'help': [help_menu, 'to see list of commands'],
-    "0 or exit": [exit_notes, 'to exit']
+    "add": [AddNoteCommand, 'to add note'],
+    "delete": [DeleteNoteCommand, 'to delete note'],
+    "edit": [ChangeNoteCommand, 'to edit note'],
+    "search": [SearchCommand, 'to search note'],
+    "show all": [ShowNotesCommand, 'to output all notes'],
+    'help': [help, 'to see list of commands'],
+    "0 or exit": [exit, 'to exit']
 }
 
 
@@ -285,27 +309,24 @@ def instruction(command_dict):
 def notes_main():
     print("\n\n***Hello I`m a notebook.***\n")
     instruction(note_commands)
+    nb = NoteBook()
     nb.load()
+
     while True:
         user_input_command = str(input("\nInput a command:\n>>>"))
         command = pars(user_input_command.lower(), note_commands)
+        
         if user_input_command == 'help':
             instruction(note_commands)
         elif user_input_command in ("exit", "0"):
             nb.save()
             print('Notebook closed')
             break
-        elif user_input_command == 'show all':
-            show_notes()
         else:
             if command in note_commands:
-                result = command_handler(command, note_commands)
+                nb.execute_command(note_commands[command][0](nb))
             else:
-                result = command_handler(user_input_command, note_commands)
-            nb.save()
-            if result:
-                print(result)
-
+                print("Invalid command.")
 
 if __name__ == "__main__":
     notes_main()
