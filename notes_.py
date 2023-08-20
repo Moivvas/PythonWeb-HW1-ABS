@@ -72,8 +72,8 @@ class Command(ABC):
 
 class NoteBook:
     def __init__(self):
-        self.data = {}  # Словник для зберігання нотаток та їх тегів
-        self.load()  # Завантаження даних з файлу під час створення об'єкта
+        self.data = {}
+        self.load() 
 
     def execute_command(self, command):
         result = command.execute()
@@ -151,7 +151,7 @@ class NoteBook:
         table.add_column("Tags")
 
         for obj in found_fields:
-            str_tags = ", ".join(str(tag) for tag in obj[1])  # Перетворення об'єктів Tag на рядки
+            str_tags = ", ".join(str(tag) for tag in obj[1])
             table.add_row(str(obj[0]), str_tags)
 
         if found_fields:
@@ -210,7 +210,7 @@ class DeleteNoteCommand(Command):
         self.note_book = note_book
 
     def execute(self):
-        self.note_book.show_notes()  # Виводимо список нотаток перед видаленням
+        self.note_book.show_notes()
         x = input("\n***Delete func***\nChoose the note you want to delete by number ('0' - to exit delete func):\n>>> ")
 
         try:
@@ -224,10 +224,10 @@ class DeleteNoteCommand(Command):
                 return 'Exit "Delete func" success'
             else:
                 print("\n***Ooops***\nInvalid input. Please enter a valid number.")
-                self.execute()  # Викликати метод execute знову
+                self.execute()
         except ValueError:
             print("\n***Ooops***\nInvalid input. Please enter a number.")
-            self.execute()  # Викликати метод execute знову
+            self.execute()
 
 
 class ShowNotesCommand(Command):
@@ -264,36 +264,16 @@ class SearchCommand(Command):
             print("\n***Ooops***\nWrong input")
             SearchCommand()
 
-
-class HelpMenuCommand(Command):
-    def __init__(self, note_book, note_commands):  # Додайте note_commands як аргумент
-        self.note_book = note_book
-        self.note_commands = note_commands  # Збережіть словник команд
-
-    def execute(self):
-        console = Console()
-        table = Table(show_header=True, header_style="bold magenta", width=60, show_lines=False)
-        table.add_column("Command", max_width=None, no_wrap=False)
-        table.add_column("Description", width=20, no_wrap=False)
-
-        for func_name, func in self.note_commands.items():  # Використовуйте self.note_commands
-            table.add_row(str(func_name), str(func[1]))
-
-        console.print(table)
-
-def exit_notes():
-    pass
-
+        
 note_commands = {
     "add": [AddNoteCommand, 'to add note'],
     "delete": [DeleteNoteCommand, 'to delete note'],
     "edit": [ChangeNoteCommand, 'to edit note'],
     "search": [SearchCommand, 'to search note'],
     "show all": [ShowNotesCommand, 'to output all notes'],
-    'help': [HelpMenuCommand, 'to see list of commands'],
-    "0 or exit": [exit_notes, 'to exit']
+    'help': [help, 'to see list of commands'],
+    "0 or exit": [exit, 'to exit']
 }
-
 
 
 def pars(txt_comm: str, command_dict):
@@ -328,28 +308,22 @@ def instruction(command_dict):
 
 def notes_main():
     print("\n\n***Hello I`m a notebook.***\n")
+    instruction(note_commands)
     nb = NoteBook()
-    nb.execute_command(note_commands["help"][0](nb, note_commands))
     nb.load()
-
-    for command_name, command_info in note_commands.items():
-        if command_name == 'help':
-            command_info[0].note_commands = note_commands  # Передайте словник команд у HelpMenuCommand
-        else:
-            command_info[0].note_book = nb
 
     while True:
         user_input_command = str(input("\nInput a command:\n>>>"))
         command = pars(user_input_command.lower(), note_commands)
         
-        if user_input_command in ("exit", "0"):
+        if user_input_command == 'help':
+            instruction(note_commands)
+        elif user_input_command in ("exit", "0"):
             nb.save()
             print('Notebook closed')
             break
-        elif user_input_command == 'help':
-            nb.execute_command(note_commands["help"][0](nb, note_commands))
         else:
-            if command and command in note_commands:
+            if command in note_commands:
                 nb.execute_command(note_commands[command][0](nb))
             else:
                 print("Invalid command.")
